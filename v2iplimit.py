@@ -28,7 +28,7 @@ from utils.panel_api import (
 from utils.read_config import read_config
 from utils.types import PanelType
 
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 
 parser = argparse.ArgumentParser(description="Help message")
 parser.add_argument("--version", action="version", version=VERSION)
@@ -42,24 +42,30 @@ async def main():
     print("Telegram Bot running...")
     asyncio.create_task(run_telegram_bot())
     await asyncio.sleep(2)
+    last_config_error = None
     while True:
         try:
             config_file = await read_config(check_required_elements=True)
             break
         except ValueError as error:
-            logger.error(error)
-            await send_logs(("<code>" + str(error) + "</code>"))
-            await send_logs(
-                "Please fill the <b>required</b> elements"
-                + " (you can see more detail for each one with sending /start):\n"
-                + "/create_config: <code>Config panel information (username, password,...)</code>\n"
-                + "/country_code: <code>Set your country code"
-                + " (to increase accuracy)</code>\n"
-                + "/set_general_limit_number: <code>Set the general limit number</code>\n"
-                + "/set_check_interval: <code>Set the check interval time</code>\n"
-                + "/set_time_to_active_users: <code>Set the time to active users</code>\n"
-                + "\nIn <b>60 seconds</b> later the program will try again."
-            )
+            error_message = str(error)
+            logger.warning("Waiting for panel configuration: %s", error_message)
+            if error_message != last_config_error:
+                last_config_error = error_message
+                await send_logs(
+                    "<b>V2IpLimit is waiting for panel configuration.</b>\n"
+                    + "<code>"
+                    + error_message
+                    + "</code>\n\n"
+                    + "Please fill the required settings through Telegram:\n"
+                    + "/create_config: <code>Config panel information (username, password,...)</code>\n"
+                    + "/country_code: <code>Set your country code"
+                    + " (to increase accuracy)</code>\n"
+                    + "/set_general_limit_number: <code>Set the general limit number</code>\n"
+                    + "/set_check_interval: <code>Set the check interval time</code>\n"
+                    + "/set_time_to_active_users: <code>Set the time to active users</code>\n"
+                    + "\nThe limiter will start automatically after the config is complete."
+                )
             await asyncio.sleep(60)
     panel_data = PanelType(
         config_file["PANEL_USERNAME"],

@@ -18,16 +18,19 @@ if ! command -v jq &>/dev/null; then
     exit 1
 fi
 
+REPOSITORY="whydr4/V2IpLimit_enchanced"
+RELEASE_VERSION="1.0.7"
+
 download_program() {
     local architecture=$(uname -m)
     local url
     local filename
 
     if [ "$architecture" == "x86_64" ]; then
-        url="https://github.com/houshmand-2005/V2IpLimit/releases/download/1.0.6/v2iplimit_amd64_linux.bin"
+        url="https://github.com/${REPOSITORY}/releases/download/${RELEASE_VERSION}/v2iplimit_amd64_linux.bin"
         filename="v2iplimit_amd64.bin"
     elif [ "$architecture" == "aarch64" ]; then
-        url="https://github.com/houshmand-2005/V2IpLimit/releases/download/1.0.6/v2iplimit_arm64_linux.bin"
+        url="https://github.com/${REPOSITORY}/releases/download/${RELEASE_VERSION}/v2iplimit_arm64_linux.bin"
         filename="v2iplimit_arm64.bin"
     else
         echo "Unsupported architecture: $architecture"

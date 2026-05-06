@@ -6,7 +6,8 @@ Read config file and return data.
 import json
 import os
 import sys
-import time
+
+from utils.config_validation import get_missing_required_elements
 
 CONFIG_DATA = None
 LAST_READ_TIME = 0
@@ -41,20 +42,10 @@ async def read_config(
         if "ADMINS" not in CONFIG_DATA:
             print("ADMINS is not set in the config.json file.")
             sys.exit()
-        LAST_READ_TIME = time.time()
+        LAST_READ_TIME = file_mod_time
     if check_required_elements:
-        required_elements = [
-            "PANEL_DOMAIN",
-            "PANEL_USERNAME",
-            "PANEL_PASSWORD",
-            "CHECK_INTERVAL",
-            "TIME_TO_ACTIVE_USERS",
-            "IP_LOCATION",
-            "GENERAL_LIMIT",
-        ]
-        for element in required_elements:
-            if element not in CONFIG_DATA:
-                raise ValueError(
-                    f"Missing required element '{element}' in the config file."
-                )
+        missing_elements = get_missing_required_elements(CONFIG_DATA)
+        if missing_elements:
+            missing = ", ".join(missing_elements)
+            raise ValueError(f"Missing required config elements: {missing}.")
     return CONFIG_DATA

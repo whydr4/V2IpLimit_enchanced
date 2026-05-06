@@ -169,6 +169,57 @@ create_or_update_admins() {
 
     echo "The ADMIN has been updated."
 }
+
+create_or_update_telegram_proxy() {
+    local proxy
+    local confirm
+
+    if [ -f "config.json" ]; then
+        proxy=$(jq -r '.TELEGRAM_PROXY // empty' config.json)
+        if [ -n "$proxy" ]; then
+            echo "Current TELEGRAM_PROXY is: $proxy"
+        else
+            echo "Current TELEGRAM_PROXY is not set."
+        fi
+        read -p "Do you want to change it? (y/n) " confirm
+        if [[ $confirm != [Yy]* ]]; then
+            return
+        fi
+    fi
+
+    echo "Enter Telegram proxy URL, for example:"
+    echo "  socks5://user:pass@host:port"
+    echo "  http://host:port"
+    echo "Leave empty to disable Telegram proxy."
+    read -p "Enter TELEGRAM_PROXY: " proxy
+
+    if [ -n "$proxy" ] && [[ ! "$proxy" =~ ^(https?|socks5h?)://[^[:space:]]+$ ]]; then
+        echo "Invalid proxy URL. Use http://, https://, socks5://, or socks5h://."
+        return
+    fi
+
+    if [ -f "config.json" ]; then
+        if [ -n "$proxy" ]; then
+            jq --arg proxy "$proxy" '.TELEGRAM_PROXY = $proxy' config.json >tmp.json && mv tmp.json config.json
+        else
+            jq 'del(.TELEGRAM_PROXY)' config.json >tmp.json && mv tmp.json config.json
+        fi
+    else
+        if [ -n "$proxy" ]; then
+            jq -n --arg proxy "$proxy" '{"TELEGRAM_PROXY": $proxy}' >config.json
+        else
+            echo "{}" >config.json
+        fi
+    fi
+
+    if [ -n "$proxy" ]; then
+        echo "The TELEGRAM_PROXY has been updated."
+    else
+        echo "The TELEGRAM_PROXY has been disabled."
+    fi
+    echo "To apply the changes, you need to restart the program."
+}
+
 if [ $# -eq 0 ]; then
     while true; do
         echo "-----------------------------"
@@ -178,7 +229,8 @@ if [ $# -eq 0 ]; then
         echo "4. Update the script"
         echo "5. Create or Update telegram BOT_TOKEN"
         echo "6. Create or Update ADMINS"
-        echo "7. Exit"
+        echo "7. Create or Update Telegram Proxy"
+        echo "8. Exit"
         echo "-----------------------------"
         read -p "Enter your choice: " choice
 
@@ -189,8 +241,9 @@ if [ $# -eq 0 ]; then
         4) update_program ;;
         5) create_or_update_token ;;
         6) create_or_update_admins ;;
-        7) break ;;
-        *) echo "Invalid choice. Please enter 1, 2, 3,... or 7." ;;
+        7) create_or_update_telegram_proxy ;;
+        8) break ;;
+        *) echo "Invalid choice. Please enter 1, 2, 3,... or 8." ;;
         esac
 
         echo ""
@@ -200,6 +253,7 @@ else
     start) start_program ;;
     stop) stop_program ;;
     update) update_program ;;
-    *) echo "{start|stop|update}" ;;
+    telegram-proxy) create_or_update_telegram_proxy ;;
+    *) echo "{start|stop|update|telegram-proxy}" ;;
     esac
 fi

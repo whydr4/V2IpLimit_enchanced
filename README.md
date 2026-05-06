@@ -24,7 +24,7 @@ Supports both IPv4 and IPv6 And Marzban-node
 You can install V2IpLimit by running the following command in your terminal:
 
 ```bash
-bash <(curl -sSL https://houshmand-2005.github.io/v2iplimit.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/CokieG/V2IpLimit_enchanced/houshmand/v2iplimit.sh)
 ```
 
 After running the command, you will see a menu with the following options:
@@ -37,7 +37,8 @@ After running the command, you will see a menu with the following options:
 4. Update the script
 5. Create or Update telegram BOT_TOKEN
 6. Create or Update ADMINS
-7. Exit
+7. Create or Update Telegram Proxy
+8. Exit
 -----------------------------
 Enter your choice:
 ```
@@ -128,7 +129,7 @@ To ensure that _V2IpLimit_ runs regularly or automatically after a reboot, you c
 _Note:_ cronjob is **not recommended** for normal work, but if you need just make sure you put Telegram `BOT_TOKEN` and `ADMINS` in the `config.json` file. And also you can still check logs with
 
 ```bash
-bash <(curl -sSL https://houshmand-2005.github.io/v2iplimit.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/CokieG/V2IpLimit_enchanced/houshmand/v2iplimit.sh)
 ```
 
 and then choose `3. Attach to the script`<br>
@@ -142,13 +143,13 @@ crontab -e
 Add a new line to schedule script. For example:
 
 ```bash
-0 */6 * * * bash <(curl -sSL https://houshmand-2005.github.io/v2iplimit.sh) stop && bash <(curl -sSL https://houshmand-2005.github.io/v2iplimit.sh) start
+0 */6 * * * bash <(curl -sSL https://raw.githubusercontent.com/CokieG/V2IpLimit_enchanced/houshmand/v2iplimit.sh) stop && bash <(curl -sSL https://raw.githubusercontent.com/CokieG/V2IpLimit_enchanced/houshmand/v2iplimit.sh) start
 ```
 
 Or run at system reboot:
 
 ```bash
-@reboot bash <(curl -sSL https://houshmand-2005.github.io/v2iplimit.sh) start
+@reboot bash <(curl -sSL https://raw.githubusercontent.com/CokieG/V2IpLimit_enchanced/houshmand/v2iplimit.sh) start
 ```
 
 You can learn more about cron job scheduling by checking the [Cron Howto](https://help.ubuntu.com/community/CronHowto) guide.

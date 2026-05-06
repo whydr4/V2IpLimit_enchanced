@@ -1,3 +1,4 @@
 websockets==15.0.1
-python-telegram-bot==22.5
+python-telegram-bot[socks]==22.5
+httpx==0.28.1
 Nuitka==2.8.4

@@ -41,6 +41,7 @@ from telegram_bot.utils import (
     show_except_users_handler,
     write_country_code_json,
 )
+from telegram_bot.proxy import normalize_proxy_url
 from utils.read_config import read_config
 
 (
@@ -66,7 +67,12 @@ try:
     bot_token = data["BOT_TOKEN"]
 except KeyError as exc:
     raise ValueError("BOT_TOKEN is missing in the config file.") from exc
-application = ApplicationBuilder().token(bot_token).build()
+telegram_proxy = normalize_proxy_url(data.get("TELEGRAM_PROXY"))
+application_builder = ApplicationBuilder().token(bot_token)
+if telegram_proxy:
+    application_builder = application_builder.proxy(telegram_proxy)
+    application_builder = application_builder.get_updates_proxy(telegram_proxy)
+application = application_builder.build()
 
 
 START_MESSAGE = """

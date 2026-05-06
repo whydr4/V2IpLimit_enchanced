@@ -3,6 +3,7 @@
 import asyncio
 
 from telegram_bot.main import application
+from utils.logs import logger
 
 
 async def run_telegram_bot():
@@ -14,5 +15,6 @@ async def run_telegram_bot():
                 await application.updater.start_polling()
                 while True:
                     await asyncio.sleep(40)
-        except Exception:  # pylint: disable=broad-except
-            continue
+        except Exception as error:  # pylint: disable=broad-except
+            logger.exception("Telegram bot polling failed: %s", error)
+            await asyncio.sleep(10)

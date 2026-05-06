@@ -24,7 +24,7 @@ Supports both IPv4 and IPv6 And Marzban-node
 You can install V2IpLimit by running the following command in your terminal:
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/CokieG/V2IpLimit_enchanced/houshmand/v2iplimit.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/whydr4/V2IpLimit_enchanced/houshmand/v2iplimit.sh)
 ```
 
 After running the command, you will see a menu with the following options:

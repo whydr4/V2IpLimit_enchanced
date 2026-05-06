@@ -38,7 +38,8 @@ After running the command, you will see a menu with the following options:
 5. Create or Update telegram BOT_TOKEN
 6. Create or Update ADMINS
 7. Create or Update Telegram Proxy
-8. Exit
+8. Create or Update Telegram API Base URL
+9. Exit
 -----------------------------
 Enter your choice:
 ```

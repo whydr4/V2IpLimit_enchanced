@@ -19,7 +19,7 @@ if ! command -v jq &>/dev/null; then
 fi
 
 REPOSITORY="whydr4/V2IpLimit_enchanced"
-RELEASE_VERSION="1.0.8"
+RELEASE_VERSION="1.0.9"
 
 download_program() {
     local architecture=$(uname -m)
@@ -223,6 +223,55 @@ create_or_update_telegram_proxy() {
     echo "To apply the changes, you need to restart the program."
 }
 
+create_or_update_telegram_api_base_url() {
+    local base_url
+    local confirm
+
+    if [ -f "config.json" ]; then
+        base_url=$(jq -r '.TELEGRAM_API_BASE_URL // empty' config.json)
+        if [ -n "$base_url" ]; then
+            echo "Current TELEGRAM_API_BASE_URL is: $base_url"
+        else
+            echo "Current TELEGRAM_API_BASE_URL is not set."
+        fi
+        read -p "Do you want to change it? (y/n) " confirm
+        if [[ $confirm != [Yy]* ]]; then
+            return
+        fi
+    fi
+
+    echo "Enter Telegram Bot API reverse proxy base URL, for example:"
+    echo "  https://tg-proxy.example.com:88/bot"
+    echo "Leave empty to disable Telegram API base URL override."
+    read -p "Enter TELEGRAM_API_BASE_URL: " base_url
+
+    if [ -n "$base_url" ] && [[ ! "$base_url" =~ ^https?://[^[:space:]]+$ ]]; then
+        echo "Invalid base URL. Use http:// or https://."
+        return
+    fi
+
+    if [ -f "config.json" ]; then
+        if [ -n "$base_url" ]; then
+            jq --arg base_url "$base_url" '.TELEGRAM_API_BASE_URL = $base_url' config.json >tmp.json && mv tmp.json config.json
+        else
+            jq 'del(.TELEGRAM_API_BASE_URL)' config.json >tmp.json && mv tmp.json config.json
+        fi
+    else
+        if [ -n "$base_url" ]; then
+            jq -n --arg base_url "$base_url" '{"TELEGRAM_API_BASE_URL": $base_url}' >config.json
+        else
+            echo "{}" >config.json
+        fi
+    fi
+
+    if [ -n "$base_url" ]; then
+        echo "The TELEGRAM_API_BASE_URL has been updated."
+    else
+        echo "The TELEGRAM_API_BASE_URL has been disabled."
+    fi
+    echo "To apply the changes, you need to restart the program."
+}
+
 if [ $# -eq 0 ]; then
     while true; do
         echo "-----------------------------"
@@ -233,7 +282,8 @@ if [ $# -eq 0 ]; then
         echo "5. Create or Update telegram BOT_TOKEN"
         echo "6. Create or Update ADMINS"
         echo "7. Create or Update Telegram Proxy"
-        echo "8. Exit"
+        echo "8. Create or Update Telegram API Base URL"
+        echo "9. Exit"
         echo "-----------------------------"
         read -p "Enter your choice: " choice
 
@@ -245,8 +295,9 @@ if [ $# -eq 0 ]; then
         5) create_or_update_token ;;
         6) create_or_update_admins ;;
         7) create_or_update_telegram_proxy ;;
-        8) break ;;
-        *) echo "Invalid choice. Please enter 1, 2, 3,... or 8." ;;
+        8) create_or_update_telegram_api_base_url ;;
+        9) break ;;
+        *) echo "Invalid choice. Please enter 1, 2, 3,... or 9." ;;
         esac
 
         echo ""
@@ -257,6 +308,7 @@ else
     stop) stop_program ;;
     update) update_program ;;
     telegram-proxy) create_or_update_telegram_proxy ;;
-    *) echo "{start|stop|update|telegram-proxy}" ;;
+    telegram-api-base-url) create_or_update_telegram_api_base_url ;;
+    *) echo "{start|stop|update|telegram-proxy|telegram-api-base-url}" ;;
     esac
 fi

@@ -28,7 +28,7 @@ from utils.panel_api import (
 from utils.read_config import read_config
 from utils.types import PanelType
 
-VERSION = "1.0.14"
+VERSION = "1.0.15"
 
 parser = argparse.ArgumentParser(description="Help message")
 parser.add_argument("--version", action="version", version=VERSION)
@@ -39,7 +39,7 @@ dis_obj = DisabledUsers()
 
 async def main():
     """Main function to run the code."""
-    print("Telegram Bot running...")
+    logger.info("Starting Telegram bot")
     asyncio.create_task(run_telegram_bot())
     await asyncio.sleep(2)
     last_config_error = None
@@ -76,22 +76,22 @@ async def main():
     await enable_selected_users(panel_data, dis_users)
     await get_nodes(panel_data)
     async with asyncio.TaskGroup() as tg:
-        print("Start Create Panel Task Test: ")
+        logger.info("Starting main panel log task")
         await create_panel_task(panel_data, tg)
         await asyncio.sleep(5)
         nodes_list = await get_nodes(panel_data)
         if nodes_list and not isinstance(nodes_list, ValueError):
-            print("Start Create Nodes Task Test: ")
+            logger.info("Starting connected node log tasks")
             for node in nodes_list:
                 if node.status == "connected":
                     await create_node_task(panel_data, tg, node)
                     await asyncio.sleep(4)
-        print("Start 'check_and_add_new_nodes' Task Test: ")
+        logger.info("Starting new-node watcher")
         tg.create_task(
             check_and_add_new_nodes(panel_data, tg),
             name="add_new_nodes",
         )
-        print("Start 'handle_cancel' Task Test: ")
+        logger.info("Starting disconnected-node watcher")
         tg.create_task(
             handle_cancel(panel_data, TASKS),
             name="cancel_disable_nodes",

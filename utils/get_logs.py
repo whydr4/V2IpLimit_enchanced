@@ -37,7 +37,7 @@ async def receive_log_message(ws, source: str) -> str | None:
     try:
         return await asyncio.wait_for(ws.recv(), timeout=60)
     except TimeoutError:
-        logger.info("[%s] No log messages received in the last 60 seconds", source)
+        logger.debug("[%s] No log messages received in the last 60 seconds", source)
         return None
 
 
@@ -64,7 +64,7 @@ async def get_panel_logs(panel_data: PanelType) -> None:
                     + f"/logs?interval={interval}&token={token}",
                     ssl=ssl_context if scheme == "wss" else None,
                 ) as ws:
-                    log_message = "Establishing connection for the main panel"
+                    log_message = "Connected to main panel logs"
                     await send_logs(log_message)
                     logger.info(log_message)
                     while True:
@@ -110,7 +110,7 @@ async def get_nodes_logs(panel_data: PanelType, node: NodeType) -> None:
                     ssl=ssl_context if scheme == "wss" else None,
                 ) as ws:
                     log_message = (
-                        "Establishing connection for"
+                        "Connected to"
                         + f" node number {node.node_id} name: {node.node_name}"
                     )
                     await send_logs(log_message)
@@ -175,7 +175,7 @@ async def handle_cancel_one(tasks: list[Task]) -> None:
     """
     for task in tasks:
         if task.get_name() == "Task-panel":
-            print(f"Cancelling {task.get_name()}...")
+            logger.info("Cancelling %s", task.get_name())
             task.cancel()
             tasks.remove(task)
 
@@ -193,15 +193,15 @@ async def handle_cancel_all(tasks: list[Task], panel_data: PanelType) -> None:
         while True:
             await asyncio.sleep(8192)  # =~ 2 hours and 27 minutes
             for task in tasks:
-                print(f"Cancelling {task.get_name()}...")
+                logger.info("Cancelling %s", task.get_name())
                 task.cancel()
                 tasks.remove(task)
-            print("Start Create Panel Task Test: ")
+            logger.info("Restarting main panel log task")
             await create_panel_task(panel_data, tg)
             await asyncio.sleep(5)
             nodes_list = await get_nodes(panel_data)
             if nodes_list and not isinstance(nodes_list, ValueError):
-                print("Start Create Nodes Task Test: ")
+                logger.info("Restarting connected node log tasks")
                 for node in nodes_list:
                     if node.status == "connected":
                         await create_node_task(panel_data, tg, node)

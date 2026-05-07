@@ -53,6 +53,21 @@ class ParseLogsTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(active_users["us_88"].ip, ["109.*.*.*"])
 
+    async def test_does_not_log_parser_diagnostics_by_default(self):
+        log = (
+            "2026/05/07 13:37:29.050560 from 109.*.*.*:3320 "
+            "accepted udp:1.*.*.*:53 [VLESS TCP REALITY -> silkroad] "
+            "email: 76.us_88"
+        )
+
+        with patch(
+            "utils.parse_logs.read_config",
+            new=AsyncMock(return_value={"IP_LOCATION": "None"}),
+        ), patch("utils.parse_logs.logger.info") as logger_info:
+            await parse_logs(log)
+
+        logger_info.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

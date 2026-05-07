@@ -129,11 +129,11 @@ def _empty_parse_stats() -> dict[str, int]:
     }
 
 
-def _log_parse_stats(stats: dict[str, int]) -> None:
+def _log_parse_stats(stats: dict[str, int], debug_logs: bool) -> None:
     global PARSE_BATCH_COUNT  # pylint: disable=global-statement
 
     PARSE_BATCH_COUNT += 1
-    if stats["added"] or PARSE_BATCH_COUNT % 50 == 0:
+    if debug_logs and (stats["added"] or PARSE_BATCH_COUNT % 50 == 0):
         logger.info(
             "Log parser stats: lines=%s accepted=%s blocked=%s with_ip=%s "
             "with_email=%s added=%s invalid_ip=%s location_mismatch=%s "
@@ -150,9 +150,11 @@ def _log_parse_stats(stats: dict[str, int]) -> None:
         )
 
 
-def _log_no_ip_sample(line: str) -> None:
+def _log_no_ip_sample(line: str, debug_logs: bool) -> None:
     global NO_IP_SAMPLE_COUNT  # pylint: disable=global-statement
 
+    if not debug_logs:
+        return
     if NO_IP_SAMPLE_COUNT >= 5:
         return
     NO_IP_SAMPLE_COUNT += 1
@@ -195,6 +197,7 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
         list[UserType]
     """
     data = await read_config()
+    debug_logs = bool(data.get("DEBUG_LOGS"))
     if data.get("INVALID_IPS"):
         INVALID_IPS.update(data.get("INVALID_IPS"))
     stats = _empty_parse_stats()
@@ -210,7 +213,7 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
         email_match = EMAIL_REGEX.search(line)
         ip = _extract_client_ip(line)
         if ip is None:
-            _log_no_ip_sample(line)
+            _log_no_ip_sample(line, debug_logs)
             continue
         stats["with_ip"] += 1
         if ip not in VALID_IPS:
@@ -248,5 +251,5 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
             )
         stats["added"] += 1
 
-    _log_parse_stats(stats)
+    _log_parse_stats(stats, debug_logs)
     return ACTIVE_USERS

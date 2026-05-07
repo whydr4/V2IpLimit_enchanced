@@ -108,6 +108,8 @@ async def is_valid_ip(ip: str) -> bool:
 
 IP_V6_REGEX = re.compile(r"\[([0-9a-fA-F:]+)\]:\d+\s+accepted")
 IP_V4_REGEX = re.compile(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})")
+FROM_ACCEPTED_ENDPOINT_REGEX = re.compile(r"\bfrom\s+(\[[0-9a-fA-F:]+\]|[0-9.*]+):\d+\s+accepted\b")
+MASKED_IP_V4_REGEX = re.compile(r"^(?:\d{1,3}|\*)\.(?:\d{1,3}|\*)\.(?:\d{1,3}|\*)\.(?:\d{1,3}|\*)$")
 EMAIL_REGEX = re.compile(r"email:\s*([A-Za-z0-9._%+-]+)")
 PARSE_BATCH_COUNT = 0
 NO_IP_SAMPLE_COUNT = 0
@@ -131,7 +133,7 @@ def _log_parse_stats(stats: dict[str, int]) -> None:
     global PARSE_BATCH_COUNT  # pylint: disable=global-statement
 
     PARSE_BATCH_COUNT += 1
-    if stats["added"] or stats["accepted"] or PARSE_BATCH_COUNT % 50 == 0:
+    if stats["added"] or PARSE_BATCH_COUNT % 50 == 0:
         logger.info(
             "Log parser stats: lines=%s accepted=%s blocked=%s with_ip=%s "
             "with_email=%s added=%s invalid_ip=%s location_mismatch=%s "
@@ -157,6 +159,31 @@ def _log_no_ip_sample(line: str) -> None:
     logger.info("Accepted log sample without parsed IP: %s", line[:500])
 
 
+def _is_masked_ip(ip: str) -> bool:
+    if "*" not in ip or not MASKED_IP_V4_REGEX.match(ip):
+        return False
+    for part in ip.split("."):
+        if part != "*" and not 0 <= int(part) <= 255:
+            return False
+    return True
+
+
+def _extract_client_ip(line: str) -> str | None:
+    from_match = FROM_ACCEPTED_ENDPOINT_REGEX.search(line)
+    if from_match:
+        return from_match.group(1).strip("[]")
+
+    ip_v6_match = IP_V6_REGEX.search(line)
+    if ip_v6_match:
+        return ip_v6_match.group(1)
+
+    ip_v4_match = IP_V4_REGEX.search(line)
+    if ip_v4_match:
+        return ip_v4_match.group(1)
+
+    return None
+
+
 async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable=too-many-branches
     """
     Asynchronously parse logs to extract and validate IP addresses and emails.
@@ -180,20 +207,16 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
         if "BLOCK]" in line:
             stats["blocked"] += 1
             continue
-        ip_v6_match = IP_V6_REGEX.search(line)
-        ip_v4_match = IP_V4_REGEX.search(line)
         email_match = EMAIL_REGEX.search(line)
-        if ip_v6_match:
-            ip = ip_v6_match.group(1)
-        elif ip_v4_match:
-            ip = ip_v4_match.group(1)
-        else:
+        ip = _extract_client_ip(line)
+        if ip is None:
             _log_no_ip_sample(line)
             continue
         stats["with_ip"] += 1
         if ip not in VALID_IPS:
-            is_valid_ip_test = await is_valid_ip(ip)
-            if is_valid_ip_test and ip not in INVALID_IPS:
+            if _is_masked_ip(ip):
+                pass
+            elif await is_valid_ip(ip) and ip not in INVALID_IPS:
                 if data["IP_LOCATION"] != "None":
                     country = await check_ip(ip)
                     if country and country == data["IP_LOCATION"]:

@@ -110,6 +110,7 @@ IP_V6_REGEX = re.compile(r"\[([0-9a-fA-F:]+)\]:\d+\s+accepted")
 IP_V4_REGEX = re.compile(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})")
 EMAIL_REGEX = re.compile(r"email:\s*([A-Za-z0-9._%+-]+)")
 PARSE_BATCH_COUNT = 0
+NO_IP_SAMPLE_COUNT = 0
 
 
 def _empty_parse_stats() -> dict[str, int]:
@@ -147,6 +148,15 @@ def _log_parse_stats(stats: dict[str, int]) -> None:
         )
 
 
+def _log_no_ip_sample(line: str) -> None:
+    global NO_IP_SAMPLE_COUNT  # pylint: disable=global-statement
+
+    if NO_IP_SAMPLE_COUNT >= 5:
+        return
+    NO_IP_SAMPLE_COUNT += 1
+    logger.info("Accepted log sample without parsed IP: %s", line[:500])
+
+
 async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable=too-many-branches
     """
     Asynchronously parse logs to extract and validate IP addresses and emails.
@@ -178,6 +188,7 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
         elif ip_v4_match:
             ip = ip_v4_match.group(1)
         else:
+            _log_no_ip_sample(line)
             continue
         stats["with_ip"] += 1
         if ip not in VALID_IPS:

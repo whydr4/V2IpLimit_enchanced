@@ -32,6 +32,15 @@ ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
 
 
+async def receive_log_message(ws, source: str) -> str | None:
+    """Receive one websocket log message and report quiet connections."""
+    try:
+        return await asyncio.wait_for(ws.recv(), timeout=60)
+    except TimeoutError:
+        logger.info("[%s] No log messages received in the last 60 seconds", source)
+        return None
+
+
 async def get_panel_logs(panel_data: PanelType) -> None:
     """
     This function establishes a websocket connection to the main server and retrieves logs.
@@ -59,7 +68,9 @@ async def get_panel_logs(panel_data: PanelType) -> None:
                     await send_logs(log_message)
                     logger.info(log_message)
                     while True:
-                        new_log = await ws.recv()
+                        new_log = await receive_log_message(ws, "Main panel")
+                        if new_log is None:
+                            continue
                         await parse_logs(str(new_log))
 
             except SSLError:
@@ -105,7 +116,11 @@ async def get_nodes_logs(panel_data: PanelType, node: NodeType) -> None:
                     await send_logs(log_message)
                     logger.info(log_message)
                     while True:
-                        new_log = await ws.recv()
+                        new_log = await receive_log_message(
+                            ws, f"Node {node.node_id} {node.node_name}"
+                        )
+                        if new_log is None:
+                            continue
                         await parse_logs(str(new_log))
             except SSLError:
                 break

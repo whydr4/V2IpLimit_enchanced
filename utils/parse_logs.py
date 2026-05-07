@@ -3,6 +3,7 @@ This module contains functions to parse and validate logs.
 """
 
 import ipaddress
+import logging
 import random
 import re
 import sys
@@ -33,6 +34,7 @@ INVALID_IPS = {
 }
 VALID_IPS = []
 CACHE = {}
+logger = logging.getLogger(__name__)
 
 API_ENDPOINTS = {
     "http://ip-api.com/json/": "countryCode",
@@ -107,6 +109,42 @@ async def is_valid_ip(ip: str) -> bool:
 IP_V6_REGEX = re.compile(r"\[([0-9a-fA-F:]+)\]:\d+\s+accepted")
 IP_V4_REGEX = re.compile(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})")
 EMAIL_REGEX = re.compile(r"email:\s*([A-Za-z0-9._%+-]+)")
+PARSE_BATCH_COUNT = 0
+
+
+def _empty_parse_stats() -> dict[str, int]:
+    return {
+        "lines": 0,
+        "accepted": 0,
+        "blocked": 0,
+        "with_ip": 0,
+        "with_email": 0,
+        "added": 0,
+        "invalid_ip": 0,
+        "location_mismatch": 0,
+        "missing_email": 0,
+    }
+
+
+def _log_parse_stats(stats: dict[str, int]) -> None:
+    global PARSE_BATCH_COUNT  # pylint: disable=global-statement
+
+    PARSE_BATCH_COUNT += 1
+    if stats["added"] or stats["accepted"] or PARSE_BATCH_COUNT % 50 == 0:
+        logger.info(
+            "Log parser stats: lines=%s accepted=%s blocked=%s with_ip=%s "
+            "with_email=%s added=%s invalid_ip=%s location_mismatch=%s "
+            "missing_email=%s",
+            stats["lines"],
+            stats["accepted"],
+            stats["blocked"],
+            stats["with_ip"],
+            stats["with_email"],
+            stats["added"],
+            stats["invalid_ip"],
+            stats["location_mismatch"],
+            stats["missing_email"],
+        )
 
 
 async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable=too-many-branches
@@ -122,11 +160,15 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
     data = await read_config()
     if data.get("INVALID_IPS"):
         INVALID_IPS.update(data.get("INVALID_IPS"))
+    stats = _empty_parse_stats()
     lines = log.splitlines()
+    stats["lines"] = len(lines)
     for line in lines:
         if "accepted" not in line:
             continue
+        stats["accepted"] += 1
         if "BLOCK]" in line:
+            stats["blocked"] += 1
             continue
         ip_v6_match = IP_V6_REGEX.search(line)
         ip_v4_match = IP_V4_REGEX.search(line)
@@ -137,6 +179,7 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
             ip = ip_v4_match.group(1)
         else:
             continue
+        stats["with_ip"] += 1
         if ip not in VALID_IPS:
             is_valid_ip_test = await is_valid_ip(ip)
             if is_valid_ip_test and ip not in INVALID_IPS:
@@ -146,15 +189,19 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
                         VALID_IPS.append(ip)
                     elif country and country != data["IP_LOCATION"]:
                         INVALID_IPS.add(ip)
+                        stats["location_mismatch"] += 1
                         continue
             else:
+                stats["invalid_ip"] += 1
                 continue
         if email_match:
+            stats["with_email"] += 1
             email = email_match.group(1)
             email = await remove_id_from_username(email)
             if email in INVALID_EMAILS:
                 continue
         else:
+            stats["missing_email"] += 1
             continue
 
         user = ACTIVE_USERS.get(email)
@@ -165,5 +212,7 @@ async def parse_logs(log: str) -> dict[str, UserType] | dict:  # pylint: disable
                 email,
                 UserType(name=email, ip=[ip]),
             )
+        stats["added"] += 1
 
+    _log_parse_stats(stats)
     return ACTIVE_USERS

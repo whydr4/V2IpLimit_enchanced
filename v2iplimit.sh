@@ -19,7 +19,7 @@ if ! command -v jq &>/dev/null; then
 fi
 
 REPOSITORY="whydr4/V2IpLimit_enchanced"
-RELEASE_VERSION="1.0.11"
+RELEASE_VERSION="1.0.12"
 
 download_program() {
     local architecture=$(uname -m)

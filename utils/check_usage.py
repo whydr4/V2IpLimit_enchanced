@@ -4,7 +4,6 @@ appears more than two times in the ACTIVE_USERS list.
 """
 
 import asyncio
-from collections import Counter
 
 from telegram_bot.send_message import send_logs
 from utils.logs import logger
@@ -18,13 +17,12 @@ ACTIVE_USERS: dict[str, UserType] | dict = {}
 async def check_ip_used() -> dict:
     """
     This function checks if a user (name and IP address)
-    appears more than two times in the ACTIVE_USERS list.
+    appears in the ACTIVE_USERS list.
     """
     all_users_log = {}
     for email in list(ACTIVE_USERS.keys()):
         data = ACTIVE_USERS[email]
-        ip_counts = Counter(data.ip)
-        data.ip = list({ip for ip in data.ip if ip_counts[ip] > 2})
+        data.ip = list(dict.fromkeys(data.ip))
         all_users_log[email] = data.ip
         logger.info(data)
     total_ips = sum(len(ips) for ips in all_users_log.values())
